@@ -1,0 +1,6 @@
+@SB.Entidad.API_HostAddress = http://localhost:5127
+
+GET {{SB.Entidad.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
