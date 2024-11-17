@@ -1,11 +1,21 @@
+using Serilog;
+
 var builder = WebApplication.CreateBuilder(args);
 
+// Configuración de Serilog
+builder.Host.UseSerilog((ctx, lc) =>
+    lc.WriteTo.Console() // Configuración para escribir los logs en la consola
+      .ReadFrom.Configuration(ctx.Configuration) // Lee configuraciones de appsettings.json
+);
+
 // Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+// Middleware de Serilog para registro de solicitudes HTTP
+app.UseSerilogRequestLogging(); // Agrega registro de logs para cada solicitud
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -23,7 +33,7 @@ var summaries = new[]
 
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
@@ -38,6 +48,7 @@ app.MapGet("/weatherforecast", () =>
 
 app.Run();
 
+// Registro de la clase WeatherForecast
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
