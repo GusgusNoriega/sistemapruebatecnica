@@ -1,23 +1,49 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configuración de Serilog
 builder.Host.UseSerilog((ctx, lc) =>
-    lc.WriteTo.Console() // Configuración para escribir los logs en la consola
-      .ReadFrom.Configuration(ctx.Configuration) // Lee configuraciones de appsettings.json
-);
+    lc.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
 
-// Add services to the container.
+// Configuración de JWT
+var key = "clave_super_secreta_para_jwt"; // Cambia esto por una clave más segura
+var keyBytes = Encoding.ASCII.GetBytes(key);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+        ValidateIssuer = false,
+        ValidateAudience = false
+    };
+});
+
+// Agregar servicios y controladores
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Middleware de Serilog para registro de solicitudes HTTP
-app.UseSerilogRequestLogging(); // Agrega registro de logs para cada solicitud
+// Middleware de Serilog
+app.UseSerilogRequestLogging();
 
-// Configure the HTTP request pipeline.
+// Middleware de autenticación y autorización
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Middleware de desarrollo
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -25,31 +51,5 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
-
+app.MapControllers();
 app.Run();
-
-// Registro de la clase WeatherForecast
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
